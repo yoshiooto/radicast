@@ -16,11 +16,11 @@ func lookConverterCommand() (string, error) {
 	return "", fmt.Errorf("not found converter cmd such also ffmpeg, avconv.")
 }
 
-func newConverterCmd(path, bitrate, output string) (*exec.Cmd, error) {
+func newConverterCmd(path, bitrate, output string, title string, author string) (*exec.Cmd, error) {
 
 	switch {
 	case regexp.MustCompile("ffmpeg$").MatchString(path):
-		return newFfmpegCmd(path, bitrate, output), nil
+		return newFfmpegCmd(path, bitrate, output, title, author), nil
 	case regexp.MustCompile("avconv$").MatchString(path):
 		return newAvconvCmd(path, bitrate, output), nil
 	}
@@ -28,16 +28,18 @@ func newConverterCmd(path, bitrate, output string) (*exec.Cmd, error) {
 	return nil, fmt.Errorf("path should be ffmpeg or avconv")
 }
 
-func newFfmpegCmd(ffmpeg, bitrate, output string) *exec.Cmd {
+func newFfmpegCmd(ffmpeg, bitrate, output string, title string, author string) *exec.Cmd {
+	metatitle := fmt.Sprintf("title=%s", title)
+	metaauthor := fmt.Sprintf("artist=%s", author)
 	return exec.Command(
 		ffmpeg,
 		"-y",
 		"-i", "-",
 		"-vn",
-		"-acodec", "libmp3lame",
-		"-ar", "44100",
-		"-ab", bitrate,
-		"-ac", "2",
+		"-acodec", "copy",
+		"-metadata", metatitle,
+		"-metadata", metaauthor,
+		"-metadata", "genre=radio",
 		output,
 	)
 }
@@ -48,10 +50,7 @@ func newAvconvCmd(avconv, bitrate, output string) *exec.Cmd {
 		"-y",
 		"-i", "-",
 		"-vn",
-		"-c:a", "libmp3lame",
-		"-ar", "44100",
-		"-b:a", bitrate,
-		"-ac", "2",
+		"-c:a", "copy",
 		output,
 	)
 }

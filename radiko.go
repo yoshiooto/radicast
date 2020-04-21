@@ -89,10 +89,10 @@ func (r *RadikoResult) Save(dir string) error {
 		return err
 	}
 
-	mp3Path := filepath.Join(programDir, "podcast.mp3")
+	m4aPath := filepath.Join(programDir, "podcast.m4a")
 	xmlPath := filepath.Join(programDir, "podcast.xml")
 
-	if err := RenameOrCopy(r.Mp3Path, mp3Path); err != nil {
+	if err := RenameOrCopy(r.Mp3Path, m4aPath); err != nil {
 		return err
 	}
 
@@ -110,7 +110,7 @@ func (r *RadikoResult) Save(dir string) error {
 		return err
 	}
 
-	r.Log("saved mp3:", mp3Path, " xml:", xmlPath)
+	r.Log("saved m4a:", m4aPath, " xml:", xmlPath)
 
 	return nil
 }
@@ -157,7 +157,7 @@ func (r *Radiko) run(ctx context.Context) []*RadikoResult {
 	results := []*RadikoResult{}
 
 	record := func() error {
-		output := filepath.Join(r.TempDir, fmt.Sprintf("radiko_%d.mp3", retry))
+		output := filepath.Join(r.TempDir, fmt.Sprintf("radiko_%d.m4a", retry))
 
 		ret, err := r.record(ctx, output, r.Station, r.Bitrate, r.Buffer)
 
@@ -211,9 +211,9 @@ func (r *Radiko) run(ctx context.Context) []*RadikoResult {
 	}
 }
 
-// http://superuser.com/questions/314239/how-to-join-merge-many-mp3-files
+// http://superuser.com/questions/314239/how-to-join-merge-many-m4a-files
 func (r *Radiko) ConcatOutput(dir string, results []*RadikoResult) (*RadikoResult, error) {
-	output := filepath.Join(dir, "radiko_concat.mp3")
+	output := filepath.Join(dir, "radiko_concat.m4a")
 
 	outputs := []string{}
 	for _, result := range results {
@@ -358,7 +358,15 @@ func (r *Radiko) record(ctx context.Context, output string, station string, bitr
 
 	duration += buffer
 
-	err = r.download(ctx, authtoken, station, fmt.Sprint(duration), bitrate, output)
+	ft, err := prog.FtTime()
+
+	if err != nil {
+		return nil, err
+	}
+
+	title := fmt.Sprintf("%s (%s)", prog.Title, ft)
+
+	err = r.download(ctx, authtoken, station, fmt.Sprint(duration), bitrate, output, title, prog.Pfm)
 
 	if _, fileErr := os.Stat(output); fileErr != nil {
 		return nil, err
@@ -373,7 +381,7 @@ func (r *Radiko) record(ctx context.Context, output string, station string, bitr
 	return ret, err
 }
 
-func (r *Radiko) download(ctx context.Context, authtoken string, station string, sec string, bitrate string, output string) error {
+func (r *Radiko) download(ctx context.Context, authtoken string, station string, sec string, bitrate string, output string, title string, author string) error {
 
 	rtmpdump, err := exec.LookPath("rtmpdump")
 
@@ -393,7 +401,7 @@ func (r *Radiko) download(ctx context.Context, authtoken string, station string,
 		"-o", "-",
 	)
 
-	converterCmd, err := newConverterCmd(r.Converter, bitrate, output)
+	converterCmd, err := newConverterCmd(r.Converter, bitrate, output, title, author)
 
 	if err != nil {
 		return err
